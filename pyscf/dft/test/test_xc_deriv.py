@@ -566,6 +566,42 @@ class KnownValues(unittest.TestCase):
             xcp = dft.xcfun.eval_xc1('b88,', rhop, spin, deriv=deriv-1)
             kxc1 = xc_deriv.transform_xc(rhop, xcp, xctype, spin, deriv-1)
             self.assertAlmostEqual(abs((kxc0-kxc1)/delta - lxc[t]).max(), 0, 7)
+            
+    @unittest.skipIf(not (hasattr(dft, 'xcfun') and dft.xcfun.MAX_DERIV_ORDER > 5), 'xcfun order')
+    def test_xcfun_gga_deriv6_finite_diff(self):
+        xctype = 'GGA'
+        deriv = 6
+        nvar = 4
+        delta = 1e-6
+
+        spin = 1
+        rhop = rho[:,:nvar].copy()
+        xcp = dft.xcfun.eval_xc1('pbe,', rhop, spin, deriv=deriv)
+        f6xc = xc_deriv.transform_xc(rhop, xcp, xctype, spin, deriv)
+        for s in (0, 1):
+            for t in range(nvar):
+                rhop = rho[:,:nvar].copy()
+                rhop[s,t] += delta * .5
+                xcp = dft.xcfun.eval_xc1('pbe,', rhop, spin, deriv=deriv-1)
+                f5xc0 = xc_deriv.transform_xc(rhop, xcp, xctype, spin, deriv-1)
+                rhop[s,t] -= delta
+                xcp = dft.xcfun.eval_xc1('pbe,', rhop, spin, deriv=deriv-1)
+                f5xc1 = xc_deriv.transform_xc(rhop, xcp, xctype, spin, deriv-1)
+                self.assertTrue(np.allclose((f5xc0-f5xc1)/delta, f6xc[s,t], rtol=1e-6))
+
+        spin = 0
+        rhop = rho[0,:nvar].copy()
+        xcp = dft.xcfun.eval_xc1('b88,', rhop, spin, deriv=deriv)
+        f6xc = xc_deriv.transform_xc(rhop, xcp, xctype, spin, deriv)
+        for t in range(nvar):
+            rhop = rho[0,:nvar].copy()
+            rhop[t] += delta * .5
+            xcp = dft.xcfun.eval_xc1('b88,', rhop, spin, deriv=deriv-1)
+            f5xc0 = xc_deriv.transform_xc(rhop, xcp, xctype, spin, deriv-1)
+            rhop[t] -= delta
+            xcp = dft.xcfun.eval_xc1('b88,', rhop, spin, deriv=deriv-1)
+            f5xc1 = xc_deriv.transform_xc(rhop, xcp, xctype, spin, deriv-1)
+            self.assertTrue(np.allclose((f5xc0-f5xc1)/delta, f6xc[t], rtol=1e-6))
 
     def test_diagonal_indices(self):
         nabla_idx = [1, 2, 3]
